@@ -12,7 +12,6 @@ import (
 )
 
 func ConnectDb() (*sql.DB, error) {
-
 	err := godotenv.Load()
 
 	if err != nil {
@@ -60,4 +59,48 @@ func GetUserByID(db *sql.DB, userID int) (*models.User, error) {
 	}
 
 	return user, nil
+}
+
+func GetUserByCreds(db *sql.DB, userName string, userPass string) (*models.User, error) {
+	query := "SELECT * FROM users WHERE username = $1 AND password = $2"
+	row := db.QueryRow(query, userName, userPass)
+
+	user := &models.User{}
+	err := row.Scan(&user.ID, &user.Username, &user.Password)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		} else {
+			log.Fatal(err)
+			return nil, fmt.Errorf("failed to fetch user: %v", err)
+		}
+	}
+
+	return user, nil
+}
+
+func UserSignup(db *sql.DB, userName string, userPass string) (*models.User, error) {
+	_, err := GetUserByCreds(db, userName, userPass)
+	if err != nil {
+		if err.Error() == "user not found" {
+			addQuery := "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id"
+			row := db.QueryRow(addQuery, userName, userPass)
+			user := &models.User{}
+
+			if err := row.Scan(&user.ID); err != nil {
+				log.Fatal(err)
+				return nil, fmt.Errorf("failed to insert user: %v", err)
+			}
+
+			user.Username = userName
+			user.Password = userPass
+
+			return user, nil
+		}
+
+		log.Fatal(err)
+		return nil, fmt.Errorf("failed to fetch user: %v", err)
+	}
+
+	return nil, fmt.Errorf("user already exists")
 }
