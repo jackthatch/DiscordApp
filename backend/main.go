@@ -6,11 +6,14 @@ import (
 	"net/http"
 
 	database "goproj2/db"
+	"goproj2/websocket"
 
 	_ "github.com/lib/pq"
 )
 
 func main() {
+
+	http.HandleFunc("/webs", websocket.Handler)
 
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/submit", submitHandler)
