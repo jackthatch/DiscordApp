@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 
 	"goproj2/models"
 	"os"
@@ -103,4 +104,64 @@ func UserSignup(db *sql.DB, userName string, userPass string) (*models.User, err
 	}
 
 	return nil, fmt.Errorf("user already exists")
+}
+
+func FindServer(db *sql.DB, serverName string) (*models.Server, error) {
+
+	query := "SELECT * FROM servers WHERE name = $1"
+	row := db.QueryRow(query, serverName)
+
+	var server models.Server
+	err := row.Scan(&server.ID, &server.Name, &server.Members)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("Server not found")
+		} else {
+			log.Fatal(err)
+			return nil, fmt.Errorf("failed to fetch server: %v", err)
+		}
+
+	}
+
+	return &server, nil
+}
+
+func CreateServer(db *sql.DB, serverName string, user *models.User) (*models.Server, error) {
+
+	existingServer, err := FindServer(db, serverName)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "Server not found") {
+
+			_, err := db.Exec("INSERT INTO servers (name, members) VALUES ($1, 1)", serverName)
+			if err != nil {
+				log.Fatal(err)
+				log.Printf("Failed to create server: %v", err)
+				return nil, fmt.Errorf("failed to create server %v", err)
+			}
+
+			createdServer, err := FindServer(db, serverName)
+			if err != nil {
+				log.Printf("failed to fetch server after creation %v", err)
+				return nil, fmt.Errorf("failed to fetch server after creation %v", err)
+			}
+
+			user.Servers = append(user.Servers, *createdServer)
+
+			newServer := &models.Server{
+				ID:      createdServer.ID,
+				Name:    createdServer.Name,
+				Members: createdServer.Members,
+			}
+
+			return newServer, nil
+		}
+
+		log.Printf("failed to fetch server: %v", err)
+		return nil, fmt.Errorf("failed to fetch server: %v", err)
+	}
+
+	//otherwise return the existing server
+	return existingServer, nil
 }
