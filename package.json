@@ -1,0 +1,14 @@
+{
+  "name": "discordapp",
+  "version": "1.0.0",
+  "description": "12/10/23:\r         Added Dataabse connection and lookup user by user.ID\r     12/11/23:\r         Added user signup as well as lookup user by account credentials\r         Added html frontend form to singup new users",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "tailwindcss": "^3.3.7"
+  }
+}

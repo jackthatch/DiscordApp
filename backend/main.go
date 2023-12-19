@@ -18,6 +18,9 @@ func main() {
 	http.HandleFunc("/submit-login", submitLoginHandler)
 	http.HandleFunc("/submit-signup", submitSignupHandler)
 
+	fs := http.FileServer(http.Dir("dist"))
+	http.Handle("/dist/", http.StripPrefix("/dist/", fs))
+
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Fatal("error starting server: ", err)
@@ -25,7 +28,7 @@ func main() {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	filePath := "static/index.html"
+	filePath := "dist/index.html"
 	fmt.Printf("Serving file: %s\n", filePath)
 	http.ServeFile(w, r, filePath)
 }
