@@ -45,23 +45,6 @@ func CloseDb(db *sql.DB) {
 	fmt.Println("Closed the database connection")
 }
 
-func GetUserByID(db *sql.DB, userID int) (*models.User, error) {
-	query := "SELECT * FROM users WHERE id = $1"
-	row := db.QueryRow(query, userID)
-
-	user := &models.User{}
-	err := row.Scan(&user.ID, &user.Username, &user.Password)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
-		}
-		log.Fatal(err)
-		return nil, fmt.Errorf("failed to fetch user: %v", err)
-	}
-
-	return user, nil
-}
-
 func GetUserByCreds(db *sql.DB, userName string, userPass string) (*models.User, error) {
 	query := "SELECT * FROM users WHERE username = $1 AND password = $2"
 	row := db.QueryRow(query, userName, userPass)
