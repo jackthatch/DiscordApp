@@ -14,9 +14,8 @@ import (
 func main() {
 
 	http.HandleFunc("/webs", websocket.Handler)
-
 	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/submit", submitHandler)
+	http.HandleFunc("/submit", submitUserHandler)
 
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -30,7 +29,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filePath)
 }
 
-func submitHandler(w http.ResponseWriter, r *http.Request) {
+func submitUserHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to parse form: %v", err), http.StatusInternalServerError)
@@ -40,26 +39,24 @@ func submitHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	fmt.Printf("Submitted form: Username=%s, Password:%s", username, password)
+	fmt.Printf("Submitted form: Username=%s, Password:%s\n", username, password)
 
-	w.Write([]byte("Form submitted successfully!"))
-
-	callDb(username, password)
-}
-
-func callDb(username string, password string) {
+	// Connect to the database
 	db, err := database.ConnectDb()
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, fmt.Sprintf("failed to connect to the database: %v", err), http.StatusInternalServerError)
 		return
-
 	}
 	defer database.CloseDb(db)
 
+	// Call the UserSignup function
 	user, err := database.UserSignup(db, username, password)
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, fmt.Sprintf("failed to sign up user: %v", err), http.StatusInternalServerError)
 		return
 	}
+
 	fmt.Printf("User ID: %d, Username: %s, Password: %s\n", user.ID, user.Username, user.Password)
+
+	w.Write([]byte("Form submitted successfully!"))
 }

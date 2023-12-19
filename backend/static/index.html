@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- <link rel="stylesheet" href="styles.css"> -->
 
-    <title>Form</title>
+    <title>Discord Clone</title>
 </head>
 <body>
 
@@ -33,12 +33,20 @@
         </form>
     </div>
 
+    <div class="p-4">
+        <form id="serverForm">
+            <label for="serverName">Server Name:  </label>
+            <input type="text" id="serverName" name="serverName" required>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
     <div id="messageBox"></div>
 
     <script>
         const messageForm = document.getElementById("messageForm");
         const messageInput = document.getElementById("message");
-        const messageBox = document.getElementById("messageBox");  // Fix: Assign the correct element
+        const messageBox = document.getElementById("messageBox");
 
         const socket = new WebSocket("ws://localhost:8080/webs");
 
@@ -58,7 +66,31 @@
             const messageElement = document.createElement("p");
             messageElement.textContent = message;
             messageBox.appendChild(messageElement);
-        }
+        };
+
+        const serverForm = document.getElementById("serverForm");
+        const serverNameInput = document.getElementById("serverName");
+
+        serverForm.addEventListener("submit", function(event) {
+            event.preventDefault();
+            const serverName = serverNameInput.value;
+
+            // Call the backend directly within the event listener
+            fetch(`/api/FindOrCreateServer?name=${serverName}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.serverExists) {
+                        localStorage.setItem("currServer", serverName);
+                    } else {
+                        console.log(`Server "${serverName}" doesn't exist. Creating a new server.`);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error finding or creating server:", error);
+                });
+
+            serverNameInput.value = "";
+        });
     </script>
 
 </body>

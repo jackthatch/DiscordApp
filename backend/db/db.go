@@ -80,30 +80,57 @@ func GetUserByCreds(db *sql.DB, userName string, userPass string) (*models.User,
 	return user, nil
 }
 
-func UserSignup(db *sql.DB, userName string, userPass string) (*models.User, error) {
-	_, err := GetUserByCreds(db, userName, userPass)
+func CheckUserExists(db *sql.DB, userName string) (bool, error) {
+	query := "SELECT COUNT (*) FROM users WHERE username = $1"
+	row := db.QueryRow(query, userName)
+
+	var count int
+	err := row.Scan(&count)
 	if err != nil {
-		if err.Error() == "user not found" {
-			addQuery := "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id"
-			row := db.QueryRow(addQuery, userName, userPass)
-			user := &models.User{}
-
-			if err := row.Scan(&user.ID); err != nil {
-				log.Fatal(err)
-				return nil, fmt.Errorf("failed to insert user: %v", err)
-			}
-
-			user.Username = userName
-			user.Password = userPass
-
-			return user, nil
-		}
-
 		log.Fatal(err)
-		return nil, fmt.Errorf("failed to fetch user: %v", err)
+		return false, fmt.Errorf("failed to check user exists: %v", err)
 	}
 
-	return nil, fmt.Errorf("user already exists")
+	return count > 0, nil
+}
+
+func CheckUserPassword(db *sql.DB, userName string, userPass string) (bool, error) {
+	query := "SELECT COUNT(*) FROM users WHERE username = $1 AND password = $2"
+	row := db.QueryRow(query, userName, userPass)
+
+	var count int
+	err := row.Scan(&count)
+	if err != nil {
+		log.Fatal(err)
+		return false, fmt.Errorf("Password for user: %v, is incorrect", userName)
+	}
+
+	return count > 0, nil
+}
+
+func UserSignup(db *sql.DB, userName string, userPass string) (*models.User, error) {
+	exists, err := CheckUserExists(db, userName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if user exists: %v", err)
+	}
+
+	if exists {
+		return nil, fmt.Errorf("user already exists")
+	}
+
+	addQuery := "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id"
+	row := db.QueryRow(addQuery, userName, userPass)
+	user := &models.User{}
+
+	if err := row.Scan(&user.ID); err != nil {
+		log.Fatal(err)
+		return nil, fmt.Errorf("failed to insert user: %v", err)
+	}
+
+	user.Username = userName
+	user.Password = userPass
+
+	return user, nil
 }
 
 func FindServer(db *sql.DB, serverName string) (*models.Server, error) {
@@ -163,5 +190,23 @@ func CreateServer(db *sql.DB, serverName string, user *models.User) (*models.Ser
 	}
 
 	//otherwise return the existing server
+	return existingServer, nil
+}
+
+func FindOrCreateServer(db *sql.DB, serverName string, user *models.User) (*models.Server, error) {
+	existingServer, err := FindServer(db, serverName)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "Server not found") {
+			createdServer, err := CreateServer(db, serverName, user)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create server %v", err)
+			}
+			return createdServer, nil
+		}
+
+		return nil, fmt.Errorf("failed to find server %v", err)
+	}
+
 	return existingServer, nil
 }
