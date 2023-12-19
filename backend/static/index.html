@@ -10,8 +10,20 @@
 <body>
 
     <div class="p-4">
-        <h1>Login:</h1>
-        <form id="loginForm" action="/submit" method="post">
+        <h2>Login:</h1>
+        <form id="loginForm" action="/submit-login" method="post">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+    <div class="p-4">
+        <h2>Signup:</h1>
+        <form id="loginForm" action="/submit-signup" method="post">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required>
 
@@ -67,30 +79,6 @@
             messageElement.textContent = message;
             messageBox.appendChild(messageElement);
         };
-
-        const serverForm = document.getElementById("serverForm");
-        const serverNameInput = document.getElementById("serverName");
-
-        serverForm.addEventListener("submit", function(event) {
-            event.preventDefault();
-            const serverName = serverNameInput.value;
-
-            // Call the backend directly within the event listener
-            fetch(`/api/FindOrCreateServer?name=${serverName}`)
-                .then(response => response.json())
-                .then(result => {
-                    if (result.serverExists) {
-                        localStorage.setItem("currServer", serverName);
-                    } else {
-                        console.log(`Server "${serverName}" doesn't exist. Creating a new server.`);
-                    }
-                })
-                .catch(error => {
-                    console.error("Error finding or creating server:", error);
-                });
-
-            serverNameInput.value = "";
-        });
     </script>
 
 </body>

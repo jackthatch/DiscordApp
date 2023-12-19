@@ -15,7 +15,8 @@ func main() {
 
 	http.HandleFunc("/webs", websocket.Handler)
 	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/submit", submitUserHandler)
+	http.HandleFunc("/submit-login", submitLoginHandler)
+	http.HandleFunc("/submit-signup", submitSignupHandler)
 
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -29,7 +30,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filePath)
 }
 
-func submitUserHandler(w http.ResponseWriter, r *http.Request) {
+func submitLoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to parse form: %v", err), http.StatusInternalServerError)
@@ -41,7 +42,6 @@ func submitUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Submitted form: Username=%s, Password:%s\n", username, password)
 
-	// Connect to the database
 	db, err := database.ConnectDb()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to connect to the database: %v", err), http.StatusInternalServerError)
@@ -49,7 +49,36 @@ func submitUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer database.CloseDb(db)
 
-	// Call the UserSignup function
+	user, err := database.UserLogin(db, username, password)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to sign up user: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Printf("User ID: %d, Username: %s, Password: %s\n", user.ID, user.Username, user.Password)
+
+	w.Write([]byte("Form submitted successfully!"))
+}
+
+func submitSignupHandler(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to parse form: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	fmt.Printf("Submitted form: Username=%s, Password:%s\n", username, password)
+
+	db, err := database.ConnectDb()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to connect to the database: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer database.CloseDb(db)
+
 	user, err := database.UserSignup(db, username, password)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to sign up user: %v", err), http.StatusInternalServerError)

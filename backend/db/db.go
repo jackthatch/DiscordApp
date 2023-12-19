@@ -80,7 +80,7 @@ func GetUserByCreds(db *sql.DB, userName string, userPass string) (*models.User,
 	return user, nil
 }
 
-func CheckUserExists(db *sql.DB, userName string) (bool, error) {
+func CheckUsernameExists(db *sql.DB, userName string) (bool, error) { //return true if username is in database
 	query := "SELECT COUNT (*) FROM users WHERE username = $1"
 	row := db.QueryRow(query, userName)
 
@@ -94,7 +94,7 @@ func CheckUserExists(db *sql.DB, userName string) (bool, error) {
 	return count > 0, nil
 }
 
-func CheckUserPassword(db *sql.DB, userName string, userPass string) (bool, error) {
+func CheckUserPassword(db *sql.DB, userName string, userPass string) (bool, error) { //return true if password is correct
 	query := "SELECT COUNT(*) FROM users WHERE username = $1 AND password = $2"
 	row := db.QueryRow(query, userName, userPass)
 
@@ -108,29 +108,64 @@ func CheckUserPassword(db *sql.DB, userName string, userPass string) (bool, erro
 	return count > 0, nil
 }
 
-func UserSignup(db *sql.DB, userName string, userPass string) (*models.User, error) {
-	exists, err := CheckUserExists(db, userName)
+func UserLogin(db *sql.DB, userName string, userPass string) (*models.User, error) {
+
+	userExists, err := CheckUsernameExists(db, userName)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to check if user exists: %v", err)
+		return nil, fmt.Errorf("error checking if user exists: %v", err)
 	}
 
-	if exists {
-		return nil, fmt.Errorf("user already exists")
+	if userExists {
+		validPassword, err := CheckUserPassword(db, userName, userPass)
+		if err != nil {
+			return nil, fmt.Errorf("error checking password :%v", err)
+		}
+
+		if !validPassword {
+			return nil, fmt.Errorf("incorrect password")
+		}
+
+		user, err := GetUserByCreds(db, userName, userPass)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving user details: %v", err)
+		}
+
+		loggedUser := &models.User{}
+
+		loggedUser.ID = user.ID
+		loggedUser.Username = user.Username
+		loggedUser.Password = user.Password
+
+		return loggedUser, nil
+	}
+	return nil, fmt.Errorf("username not found in the datbase")
+}
+
+func UserSignup(db *sql.DB, userName string, userPass string) (*models.User, error) {
+	userExists, err := CheckUsernameExists(db, userName)
+
+	if err != nil {
+		return nil, fmt.Errorf("error checking if user exists")
 	}
 
-	addQuery := "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id"
-	row := db.QueryRow(addQuery, userName, userPass)
-	user := &models.User{}
+	if !userExists {
+		query := "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id"
+		row := db.QueryRow(query, userName, userPass)
+		user := &models.User{}
 
-	if err := row.Scan(&user.ID); err != nil {
-		log.Fatal(err)
-		return nil, fmt.Errorf("failed to insert user: %v", err)
+		if err := row.Scan(&user.ID); err != nil {
+			log.Fatal(err)
+			return nil, fmt.Errorf("failed to insert user: %v", err)
+		}
+
+		user.Username = userName
+		user.Password = userPass
+
+		return user, nil
 	}
 
-	user.Username = userName
-	user.Password = userPass
-
-	return user, nil
+	return nil, fmt.Errorf("username already exists in database")
 }
 
 func FindServer(db *sql.DB, serverName string) (*models.Server, error) {
